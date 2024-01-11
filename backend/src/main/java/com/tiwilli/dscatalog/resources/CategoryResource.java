@@ -19,8 +19,8 @@ public class CategoryResource {
     private CategoryService service;
 
     @GetMapping
-    public ResponseEntity<Page<CategoryDTO>> findAll(@RequestParam (name = "name", defaultValue = "") String name, Pageable pageable) {
-        Page<CategoryDTO> dto = service.findAllPaged(name, pageable);
+    public ResponseEntity<Page<CategoryDTO>> findAll(Pageable pageable) {
+        Page<CategoryDTO> dto = service.findAllPaged(pageable);
         return ResponseEntity.ok(dto);
     }
 
