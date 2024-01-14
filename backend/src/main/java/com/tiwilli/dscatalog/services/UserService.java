@@ -3,8 +3,10 @@ package com.tiwilli.dscatalog.services;
 import com.tiwilli.dscatalog.dto.RoleDTO;
 import com.tiwilli.dscatalog.dto.UserDTO;
 import com.tiwilli.dscatalog.dto.UserInsertDTO;
+import com.tiwilli.dscatalog.dto.UserUpdateDTO;
 import com.tiwilli.dscatalog.entities.Role;
 import com.tiwilli.dscatalog.entities.User;
+import com.tiwilli.dscatalog.projections.UserDetailsProjection;
 import com.tiwilli.dscatalog.repositories.RoleRepository;
 import com.tiwilli.dscatalog.repositories.UserRepository;
 import com.tiwilli.dscatalog.services.exceptions.DatabaseException;
@@ -14,15 +16,23 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Optional;
 
 @Service
-public class UserService {
+public class UserService implements UserDetailsService {
 
     @Autowired
     private UserRepository repository;
@@ -31,7 +41,7 @@ public class UserService {
     private RoleRepository roleRepository;
 
     @Autowired
-    private BCryptPasswordEncoder passwordEncoder;
+    private PasswordEncoder passwordEncoder;
 
     @Transactional(readOnly = true)
     public Page<UserDTO> findAllPaged(Pageable pageable) {
@@ -56,7 +66,7 @@ public class UserService {
     }
 
     @Transactional
-    public UserDTO update(Long id, UserDTO dto) {
+    public UserDTO update(Long id, UserUpdateDTO dto) {
         try {
             User entity = repository.getReferenceById(id);
             copyDtoToEntity(dto, entity);
@@ -93,4 +103,41 @@ public class UserService {
             entity.getRoles().add(role);
         }
     }
+
+    @Override
+    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+        List<UserDetailsProjection> result = repository.searchUserAndRolesByEmail(username);
+        if (result.isEmpty()) {
+            throw new UsernameNotFoundException("User not found");
+        }
+
+        User user = new User();
+        user.setEmail(result.get(0).getUsername());
+        user.setPassword(result.get(0).getPassword());
+        for (UserDetailsProjection projection : result) {
+            user.addRole(new Role(projection.getRoleId(), projection.getAuthority()));
+        }
+
+        return user;
+    }
+
+    protected User authenticated() {
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            Jwt jwtPrincipal = (Jwt) authentication.getPrincipal();
+            String username = jwtPrincipal.getClaim("username");
+
+            return repository.findByEmail(username);
+        }
+        catch (Exception e) {
+            throw new UsernameNotFoundException("User not found");
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public UserDTO getMe() {
+        User user = authenticated();
+        return new UserDTO(user);
+    }
+
 }
