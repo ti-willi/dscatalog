@@ -1,6 +1,7 @@
 package com.tiwilli.dscatalog.resources;
 
 import com.tiwilli.dscatalog.dto.ProductDTO;
+import com.tiwilli.dscatalog.projections.ProductProjection;
 import com.tiwilli.dscatalog.services.ProductService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,9 +22,12 @@ public class ProductResource {
     private ProductService service;
 
     @GetMapping
-    public ResponseEntity<Page<ProductDTO>> findAll(Pageable pageable) {
-        Page<ProductDTO> dto = service.findAllPaged(pageable);
-        return ResponseEntity.ok(dto);
+    public ResponseEntity<Page<ProductDTO>> findAll(
+            @RequestParam(value = "name", defaultValue = "") String name,
+            @RequestParam(value = "categoryId", defaultValue = "") String categoryId,
+            Pageable pageable) {
+        Page<ProductDTO> list = service.findAllPaged(name, categoryId, pageable);
+        return ResponseEntity.ok(list);
     }
 
     @GetMapping("/{id}")

@@ -4,19 +4,25 @@ import com.tiwilli.dscatalog.dto.CategoryDTO;
 import com.tiwilli.dscatalog.dto.ProductDTO;
 import com.tiwilli.dscatalog.entities.Category;
 import com.tiwilli.dscatalog.entities.Product;
+import com.tiwilli.dscatalog.projections.ProductProjection;
 import com.tiwilli.dscatalog.repositories.CategoryRepository;
 import com.tiwilli.dscatalog.repositories.ProductRepository;
 import com.tiwilli.dscatalog.services.exceptions.DatabaseException;
 import com.tiwilli.dscatalog.services.exceptions.ResourceNotFoundException;
+import com.tiwilli.dscatalog.util.Utils;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -32,6 +38,29 @@ public class ProductService {
     public Page<ProductDTO> findAllPaged(Pageable pageable) {
         Page<Product> result = repository.findAll(pageable);
         return result.map(ProductDTO::new);
+    }
+
+    @SuppressWarnings(value = "unchecked")
+    @Transactional(readOnly = true)
+    public Page<ProductDTO> findAllPaged(String name, String categoryId, Pageable pageable) {
+
+        List<Long> categoryIds = List.of();
+        if (!categoryId.isEmpty()) {
+            String[] vet = categoryId.split(",");
+            categoryIds = Arrays.stream(vet).map(Long::parseLong).toList();
+        }
+
+        Page<ProductProjection> page = repository.searchProducts(categoryIds, name, pageable);
+        List<Long> productIds = page.map(ProductProjection::getId).toList();
+
+        List<Product> entities = repository.searchProductsWithCategories(productIds);
+
+        entities = (List<Product>) Utils.replace(page.getContent(), entities);
+
+        List<ProductDTO> listDto = entities.stream().map(p -> new ProductDTO(p, p.getCategories())).toList();
+
+        return new PageImpl<>(listDto, page.getPageable(), page.getTotalElements());
+
     }
 
     @Transactional(readOnly = true)
@@ -75,6 +104,7 @@ public class ProductService {
         }
     }
 
+    @Transactional
     private void copyDtoToEntity(ProductDTO dto, Product entity) {
         entity.setName(dto.getName());
         entity.setDescription(dto.getDescription());
@@ -88,4 +118,5 @@ public class ProductService {
             entity.getCategories().add(category);
         }
     }
+
 }
