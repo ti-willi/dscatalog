@@ -43,6 +43,9 @@ public class UserService implements UserDetailsService {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    @Autowired
+    private AuthService authService;
+
     @Transactional(readOnly = true)
     public Page<UserDTO> findAllPaged(Pageable pageable) {
         Page<User> result = repository.findAll(pageable);
@@ -126,22 +129,9 @@ public class UserService implements UserDetailsService {
         return user;
     }
 
-    protected User authenticated() {
-        try {
-            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-            Jwt jwtPrincipal = (Jwt) authentication.getPrincipal();
-            String username = jwtPrincipal.getClaim("username");
-
-            return repository.findByEmail(username);
-        }
-        catch (Exception e) {
-            throw new UsernameNotFoundException("User not found");
-        }
-    }
-
     @Transactional(readOnly = true)
     public UserDTO getMe() {
-        User user = authenticated();
+        User user = authService.authenticated();
         return new UserDTO(user);
     }
 
