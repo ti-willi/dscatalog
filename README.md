@@ -32,7 +32,7 @@ https://github.com/ti-willi/dscatalog
 ```
 - Abra o projeto em sua IDE
 
-- No postman, importe a collection e o environment dentro da pasta JSON para testar os endpoits
+- No postman, importe a collection e o environment dentro da pasta postman para testar os endpoits
 
 
 
