@@ -14,7 +14,7 @@ O objetivo foi estruturar o projeto em camadas, aplicando validação, seguranç
 ## Tecnologias utilizadas
 - Java 17
 - Maven
-- Spring Boot / Data / Secutiry
+- Spring Boot / Data / Security
 - JPA / Hibernate
 - Banco H2
 - PostgreSQL
